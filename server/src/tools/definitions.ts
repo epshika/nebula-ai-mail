@@ -1,5 +1,5 @@
+import { Type, type FunctionDeclaration } from "@google/genai";
 import { z } from "zod";
-import type Anthropic from "@anthropic-ai/sdk";
 
 // ---- Zod schemas (single source of truth: validation + typing) ----
 
@@ -41,7 +41,9 @@ export const sendEmailSchema = z.object({
     .boolean()
     .optional()
     .default(false)
-    .describe("Set true only if the user has explicitly confirmed sending in this turn"),
+    .describe(
+      "Set true only if the user has explicitly confirmed sending in this turn"
+    ),
 });
 
 export const replyToEmailSchema = z.object({
@@ -62,122 +64,225 @@ export const markAsReadSchema = z.object({
 
 export const refreshInboxSchema = z.object({});
 
-// ---- Anthropic tool-use definitions (name + description + JSON schema) ----
-// Descriptions are deliberately explicit about WHEN to call each tool -
-// this is what lets the model pick tools instead of us regex-matching intent.
+// ---- Gemini function-calling definitions ----
 
-export const toolDefinitions: Anthropic.Tool[] = [
+export const toolDefinitions: FunctionDeclaration[] = [
   {
     name: "searchEmails",
     description:
-      "Search or filter the inbox/sent emails by keyword, sender, date range, or read status, and update the main email list UI with the results. Use this for requests like 'show emails from the last 10 days', 'show unread emails from Sarah', 'find the email about the project'.",
-    input_schema: {
-      type: "object",
+      "Search the user's emails. Use this for finding emails by keywords, sender, dates, read/unread status, or folder.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        query: { type: "string", description: "Free-text keyword to search subject/body/snippet" },
-        from: { type: "string", description: "Sender name or email address to filter by" },
-        after: { type: "string", description: "ISO date YYYY-MM-DD, inclusive lower bound" },
-        before: { type: "string", description: "ISO date YYYY-MM-DD, inclusive upper bound" },
-        isRead: { type: "boolean", description: "true = only read, false = only unread" },
-        folder: { type: "string", enum: ["inbox", "sent"] },
-        limit: { type: "number" },
+        query: {
+          type: Type.STRING,
+          description: "Free-text keyword to search subject, body, or snippet",
+        },
+        from: {
+          type: Type.STRING,
+          description: "Sender name or email address",
+        },
+        after: {
+          type: Type.STRING,
+          description: "ISO date YYYY-MM-DD. Only emails on or after this date.",
+        },
+        before: {
+          type: Type.STRING,
+          description: "ISO date YYYY-MM-DD. Only emails on or before this date.",
+        },
+        isRead: {
+          type: Type.BOOLEAN,
+          description: "Filter by read=true or unread=false",
+        },
+        folder: {
+          type: Type.STRING,
+          enum: ["inbox", "sent"],
+          description: "Mail folder to search",
+        },
+        limit: {
+          type: Type.INTEGER,
+          description: "Maximum number of results, up to 100",
+        },
       },
     },
   },
+
   {
     name: "openEmail",
     description:
-      "Open a specific email in the detail view. Use for 'open the latest email from David', 'show me the email about the meeting'. Provide emailId if already known from a prior search result in this conversation, otherwise provide matchFrom/matchSubject so the backend can resolve it.",
-    input_schema: {
-      type: "object",
+      "Open and display an email. Use when the user asks to open, read, inspect, or view an email.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        emailId: { type: "string" },
-        matchFrom: { type: "string" },
-        matchSubject: { type: "string" },
-        mostRecent: { type: "boolean" },
+        emailId: {
+          type: Type.STRING,
+          description: "Exact email id if already known",
+        },
+        matchFrom: {
+          type: Type.STRING,
+          description: "Sender name to match",
+        },
+        matchSubject: {
+          type: Type.STRING,
+          description: "Subject keyword to match",
+        },
+        mostRecent: {
+          type: Type.BOOLEAN,
+          description: "Whether to select the most recent matching email",
+        },
       },
     },
   },
+
   {
     name: "composeEmail",
     description:
-      "Open the compose view and pre-fill any of To/Cc/Bcc/Subject/Body. Use this whenever the user asks to write, compose, or send a NEW email (not a reply). Only fill fields the user actually specified or implied; leave others empty.",
-    input_schema: {
-      type: "object",
+      "Open the compose UI and fill a new email draft. Use when the user asks to write, draft, or compose an email. Do not send automatically.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        to: { type: "array", items: { type: "string" } },
-        cc: { type: "array", items: { type: "string" } },
-        bcc: { type: "array", items: { type: "string" } },
-        subject: { type: "string" },
-        body: { type: "string" },
+        to: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "Recipient email addresses",
+        },
+        cc: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "CC email addresses",
+        },
+        bcc: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "BCC email addresses",
+        },
+        subject: {
+          type: Type.STRING,
+          description: "Email subject",
+        },
+        body: {
+          type: Type.STRING,
+          description: "Email body",
+        },
       },
     },
   },
+
   {
     name: "updateComposeDraft",
     description:
-      "Update one or more fields of the CURRENTLY OPEN compose draft without resetting the others, e.g. when the user asks to change just the subject.",
-    input_schema: {
-      type: "object",
+      "Modify the currently open compose draft. Use when the user asks to change the recipient, subject, or body of an existing draft.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        to: { type: "array", items: { type: "string" } },
-        cc: { type: "array", items: { type: "string" } },
-        bcc: { type: "array", items: { type: "string" } },
-        subject: { type: "string" },
-        body: { type: "string" },
+        to: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "Recipient email addresses",
+        },
+        cc: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "CC email addresses",
+        },
+        bcc: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: "BCC email addresses",
+        },
+        subject: {
+          type: Type.STRING,
+          description: "Updated email subject",
+        },
+        body: {
+          type: Type.STRING,
+          description: "Updated email body",
+        },
       },
     },
   },
+
   {
     name: "sendEmail",
     description:
-      "Send the email currently in the compose draft. Only call this with confirm=true after the user has explicitly said to send it (e.g. after you've shown them the filled draft and they confirmed, or if their original message was an unambiguous, explicit send instruction with all required fields already given). If required fields are missing, do not call this — ask the user instead.",
-    input_schema: {
-      type: "object",
+      "Send the currently composed email. Only call this with confirm=true after the user has explicitly confirmed sending.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        confirm: { type: "boolean" },
+        confirm: {
+          type: Type.BOOLEAN,
+          description:
+            "Must be true only when the user explicitly confirmed sending",
+        },
       },
     },
   },
+
   {
     name: "replyToEmail",
     description:
-      "Reply to an email. If the user says 'reply to this' while an email is open, use the emailId from CURRENT CONTEXT rather than asking the user for it. Pre-fills the reply compose UI with correct recipient/subject and the given body.",
-    input_schema: {
-      type: "object",
+      "Reply to an email. Use when the user asks to reply to the currently open email or another specified email.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        emailId: { type: "string" },
-        body: { type: "string" },
+        emailId: {
+          type: Type.STRING,
+          description:
+            "Email id to reply to. Defaults to the currently open email.",
+        },
+        body: {
+          type: Type.STRING,
+          description: "The reply message body",
+        },
       },
       required: ["body"],
     },
   },
+
   {
     name: "navigateTo",
-    description: "Switch the main view, e.g. back to inbox, to sent, or to compose.",
-    input_schema: {
-      type: "object",
+    description:
+      "Navigate the mail application to Inbox, Sent, Compose, or an email view.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        view: { type: "string", enum: ["inbox", "sent", "compose", "email"] },
+        view: {
+          type: Type.STRING,
+          enum: ["inbox", "sent", "compose", "email"],
+          description: "Application view to navigate to",
+        },
       },
       required: ["view"],
     },
   },
+
   {
     name: "markAsRead",
-    description: "Mark a specific email as read or unread.",
-    input_schema: {
-      type: "object",
+    description:
+      "Mark a specific email as read or unread.",
+    parameters: {
+      type: Type.OBJECT,
       properties: {
-        emailId: { type: "string" },
-        isRead: { type: "boolean" },
+        emailId: {
+          type: Type.STRING,
+          description: "Email id",
+        },
+        isRead: {
+          type: Type.BOOLEAN,
+          description: "true to mark read, false to mark unread",
+        },
       },
       required: ["emailId"],
     },
   },
+
   {
     name: "refreshInbox",
-    description: "Force a refresh of the inbox from the mail provider.",
-    input_schema: { type: "object", properties: {} },
+    description:
+      "Refresh the inbox and synchronize the latest mail from the provider.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
   },
 ];

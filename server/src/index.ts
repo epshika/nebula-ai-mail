@@ -38,6 +38,6 @@ app.listen(PORT, () => {
       process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
     )}`
   );
-  console.log(`Anthropic API configured: ${Boolean(process.env.ANTHROPIC_API_KEY)}`);
+  console.log(`Gemini API configured: ${Boolean(process.env.GEMINI_API_KEY)}`);
   startPollingFallback();
 });
