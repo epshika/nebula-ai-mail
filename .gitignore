@@ -1,0 +1,23 @@
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+coverage/
+*.log
+.DS_Store
+
+# SQLite dev database + WAL files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# OAuth/credential exports, if ever placed locally
+credentials.json
+client_secret*.json
+*.pem
+
+# editor/OS
+.vscode/
+.idea/
