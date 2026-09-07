@@ -43,8 +43,8 @@ Every mail-reading/writing code path — real or mock — goes through the same 
 
 ```
 User message
-  → aiService.ts sends message + tool definitions + CURRENT CONTEXT to Claude
-  → Claude decides: reply in words, or call one or more tools (searchEmails, composeEmail, sendEmail, ...)
+  → aiService.ts sends message + tool definitions + CURRENT CONTEXT to Gemni
+  → Gemni decides: reply in words, or call one or more tools (searchEmails, composeEmail, sendEmail, ...)
   → tools/executor.ts validates the tool's input (Zod) and executes it against the real MailProvider
   → executor returns (a) a short text result fed back to Claude and (b) a list of UIActions
   → server returns { reply, toolsUsed, uiActions } to the client
