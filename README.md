@@ -190,7 +190,7 @@ With mock mail data (no Google account needed) and `GEMINI_API_KEY` set:
 ## Limitations
 
 - **Gmail OAuth and Gmail API calls are implemented against the real `googleapis` SDK but have not been exercised against a live Google account** in the environment this was built in (no outbound network access to Google's endpoints there). The code path is real, typed, and structurally identical to what ran successfully against the mock provider — but you should do a first real login yourself and report back if anything about Gmail's actual response shapes differs from what's assumed here.
-- **The Google Gemini tool-calling loop has not been exercised live** for the same reason (no outbound network access to `api.Google Gemini.com` in the build environment). It was structurally verified via the tool executor unit tests and manual REST testing with the key absent (confirmed graceful degradation). Test it yourself with a real `GEMINI_API_KEY` before relying on it.
+- **The Google Gemini tool-calling loop has not been exercised live** for the same reason (no outbound network access to `the Gemini API` in the build environment). It was structurally verified via the tool executor unit tests and manual REST testing with the key absent (confirmed graceful degradation). Test it yourself with a real `GEMINI_API_KEY` before relying on it.
 - **Gmail push notifications (Pub/Sub) are documented but not deployed** — see "Real-Time Sync". The polling fallback is real and working.
 - Reply currently supports plain-text bodies only; it doesn't quote/thread the original message inline.
 - No live deployment yet.
