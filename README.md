@@ -30,8 +30,8 @@ server/ (Node + Express + TS)
   ├─ services/mockMailService.ts  local dev fixture, same MailProvider interface
   ├─ services/mailProviderFactory.ts   picks Gmail vs mock per request — nothing else knows which
   ├─ services/authService.ts      Google OAuth flow, token refresh
-  ├─ services/aiService.ts        Anthropic tool-use conversation loop
-  ├─ tools/definitions.ts         Zod schemas + Anthropic tool specs (single source of truth)
+  ├─ services/aiService.ts        Google Gemini tool-use conversation loop
+  ├─ tools/definitions.ts         Zod schemas + Google Gemini tool specs (single source of truth)
   ├─ tools/executor.ts            runs a validated tool call against MailProvider, emits UIActions
   ├─ routes/                      auth, mail, assistant, realtime (SSE)
   └─ db/index.ts                  SQLite: users, oauth_tokens, sessions
@@ -101,7 +101,7 @@ This requires a GCP project, a Pub/Sub topic granted publish rights to Gmail's p
 ## Security
 
 - OAuth tokens (access + refresh) are stored server-side in SQLite, never sent to or stored in the browser. The frontend only ever holds an `httpOnly` session cookie.
-- All secrets (`GOOGLE_CLIENT_SECRET`, `ANTHROPIC_API_KEY`) live in `server/.env`, which is git-ignored; `.env.example` in both `server/` and `client/` documents every variable with placeholder values only.
+- All secrets (`GOOGLE_CLIENT_SECRET`, `GEMINI_API_KEY`) live in `server/.env`, which is git-ignored; `.env.example` in both `server/` and `client/` documents every variable with placeholder values only.
 - Email HTML is sanitized twice: server-side with `sanitize-html` before it leaves the API, client-side with `DOMPurify` before `dangerouslySetInnerHTML`.
 - Every mail route validates required fields (recipient, subject) before calling the provider and returns explicit error messages rather than swallowing failures.
 - The `sendEmail` tool is hard-gated on `confirm=true` and on the draft actually having a recipient and subject — the model cannot send an incomplete or unconfirmed email no matter how it's prompted, because the gate lives in `tools/executor.ts`, not in the prompt.
@@ -119,7 +119,7 @@ cp client/.env.example client/.env
 npm run dev
 ```
 
-This starts the backend on `http://localhost:4000` and the frontend on `http://localhost:5173`. With no further configuration, the app runs entirely against local mock mail data (see "Limitations") — Inbox, Sent, Compose, filters, and the AI assistant (once `ANTHROPIC_API_KEY` is set) all work.
+This starts the backend on `http://localhost:4000` and the frontend on `http://localhost:5173`. With no further configuration, the app runs entirely against local mock mail data (see "Limitations") — Inbox, Sent, Compose, filters, and the AI assistant (once `GEMINI_API_KEY` is set) all work.
 
 ### Configuring Google OAuth (real Gmail)
 
@@ -131,8 +131,8 @@ This starts the backend on `http://localhost:4000` and the frontend on `http://l
 
 ### Configuring the AI assistant
 
-1. Create a key at [console.anthropic.com](https://console.anthropic.com/settings/keys).
-2. Set `ANTHROPIC_API_KEY` in `server/.env`.
+1. Create a key at [console.Google Gemini.com](https://console.Google Gemini.com/settings/keys).
+2. Set `GEMINI_API_KEY` in `server/.env`.
 3. Restart the server. Without this key, the app still runs — the assistant panel replies with a clear "not configured" message and the rest of the app is fully usable manually.
 
 ## Environment Variables
@@ -143,7 +143,7 @@ See `server/.env.example` and `client/.env.example` for the full annotated list.
 |---|---|---|
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | server | Real Gmail login |
 | `GMAIL_PUBSUB_TOPIC` | server | Production push notifications (optional) |
-| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | server | AI assistant |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | server | AI assistant |
 | `DATABASE_PATH` | server | SQLite file location |
 | `MAIL_POLL_INTERVAL_MS` | server | Realtime polling fallback cadence |
 | `VITE_API_URL` | client | Backend base URL |
@@ -171,7 +171,7 @@ _Add screenshots or a short screen recording here showing the assistant filling 
 
 ## Demo Scenarios
 
-With mock mail data (no Google account needed) and `ANTHROPIC_API_KEY` set:
+With mock mail data (no Google account needed) and `GEMINI_API_KEY` set:
 
 1. "Show me unread emails from this week" — inbox list updates to the filtered set.
 2. "Find the email from David about the project" — resolves and opens the matching email.
@@ -190,7 +190,7 @@ With mock mail data (no Google account needed) and `ANTHROPIC_API_KEY` set:
 ## Limitations
 
 - **Gmail OAuth and Gmail API calls are implemented against the real `googleapis` SDK but have not been exercised against a live Google account** in the environment this was built in (no outbound network access to Google's endpoints there). The code path is real, typed, and structurally identical to what ran successfully against the mock provider — but you should do a first real login yourself and report back if anything about Gmail's actual response shapes differs from what's assumed here.
-- **The Anthropic tool-calling loop has not been exercised live** for the same reason (no outbound network access to `api.anthropic.com` in the build environment). It was structurally verified via the tool executor unit tests and manual REST testing with the key absent (confirmed graceful degradation). Test it yourself with a real `ANTHROPIC_API_KEY` before relying on it.
+- **The Google Gemini tool-calling loop has not been exercised live** for the same reason (no outbound network access to `api.Google Gemini.com` in the build environment). It was structurally verified via the tool executor unit tests and manual REST testing with the key absent (confirmed graceful degradation). Test it yourself with a real `GEMINI_API_KEY` before relying on it.
 - **Gmail push notifications (Pub/Sub) are documented but not deployed** — see "Real-Time Sync". The polling fallback is real and working.
 - Reply currently supports plain-text bodies only; it doesn't quote/thread the original message inline.
 - No live deployment yet.
